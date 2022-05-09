@@ -98,9 +98,78 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
     ax.set_xlabel("Time/s")
 
 
+def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
+    Riderm = RiderMass
+    Bikem = BikeMass
+    m = Riderm+Bikem
 
+    gpe = m*9.8*AltitudeChange
 
+    KEa = 0.5*m*Velocity*Velocity
+    KEb = 0.5*m*VelocityBef*VelocityBef
+
+    KE = KEa - KEb
+    InputEnergy = Watts
+
+    MissingEnergy = InputEnergy - gpe - KE
     
+    WattsDrag = MissingEnergy/TimeScale
+
+    return WattsDrag
+
+def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
+    RawData = ReadData(DataPath)
+
+    Drag = []
+    Time = []
+    Velocitys = []
+
+    i = TimeScale
+    while i <= len(RawData["time"])-1:
+        Velocity=RawData["velocity_smooth"][i]
+        Watts=RawData["watts"][i-TimeScale:i].sum()
+        VelocityBef=RawData["velocity_smooth"][i-TimeScale]
+        AltitudeChange=RawData["altitude"][i]-RawData["altitude"][i-TimeScale]
+        Altitude=RawData["altitude"][i]
+        RiderMass=RiderMass
+        BikeMass=BikeMass
+        #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
+        Drag.append(calcDrag(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
+        Time.append(float(RawData["time"][i]))
+        Velocitys.append(Velocity)
+        i = i + TimeScale
+    #print(CDAData)
+    #print(Time)
+
+    data = {'CDA/m^2': [Drag],
+            'Time/s': [Time]}
+
+    PlotFrame = pd.DataFrame(data)
+
+
+    with sns.axes_style("whitegrid"):
+        fig, axs = plt.subplots(nrows=2, constrained_layout=True)
+
+    ax = sns.lineplot(x = Time, y=Drag,ax=axs[0])
+    ax.set_ylabel("Drag/w")
+    ax.set_xlabel("Time/s")
+
+    p = sp.polyfit(Velocitys,Drag,2)
+    # mymodel = sp.poly1d(sp.polyfit(Velocitys,Drag,2))
+
+    # myline = sp.linspace(0, 16, 1)
+
+    # print(p)
+    # print(mymodel)
+
+    ax = sns.regplot(x = Velocitys, y=Drag,ax=axs[1], order = 2, line_kws={'label':"y={0:.3f}x^2+{1:.3f}x+{2:.3f}".format(p[0],p[1],p[2])})
+
+    ax.set_ylabel("Drag/w")
+    #ax.set_xlim(0,16)
+    #ax.set_ylim(0,600)
+
+    ax.set_xlabel("Velocity/ms^-1")
+    ax.legend()
 
 
 
@@ -534,13 +603,13 @@ def DragCalculateFolderPlotterScatters(FolderPath, MassFile, debug = False):
     with sns.axes_style("whitegrid"):
         fig, axs = plt.subplots(nrows=2, ncols=2, constrained_layout=True)
 
-    ax = sns.lmplot(x=PlotFrame['RiderMass/kg'], y = PlotFrame['Drag/w'],ax=axs[0][0])
+    ax = sns.regplot(x=PlotFrame['RiderMass/kg'], y = PlotFrame['Drag/w'],ax=axs[0][0])
     
-    ax = sns.lmplot(x=PlotFrame['RiderMass/kg'], y = PlotFrame['DragDivSpeed^2/ws^4m^-2'],ax=axs[0][1])
+    ax = sns.regplot(x=PlotFrame['RiderMass/kg'], y = PlotFrame['DragDivSpeed^2/ws^4m^-2'],ax=axs[0][1])
 
-    ax = sns.lmplot(x=PlotFrame['AveSpeed/ms^-2'], y = PlotFrame['Drag/w'],ax=axs[1][0])
+    ax = sns.regplot(x=PlotFrame['AveSpeed/ms^-2'], y = PlotFrame['Drag/w'],ax=axs[1][0])
 
-    ax = sns.lmplot(x=PlotFrame['AveSpeed/ms^-2'], y = PlotFrame['DragDivSpeed^2/ws^4m^-2'],ax=axs[1][1])
+    ax = sns.regplot(x=PlotFrame['AveSpeed/ms^-2'], y = PlotFrame['DragDivSpeed^2/ws^4m^-2'],ax=axs[1][1])
 
 
     i = 0
