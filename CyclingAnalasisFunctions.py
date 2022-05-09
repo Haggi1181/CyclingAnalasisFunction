@@ -16,6 +16,95 @@ pd.set_option('display.max_columns', None)  # or 1000
 pd.set_option('display.max_rows', None)  # or 1000
 pd.set_option('display.max_colwidth', None)  # or 199
 
+sns.set(rc={'figure.figsize':(15, 5)})
+
+
+def ReadData(DataPath):
+    Data = pd.read_csv(DataPath).fillna(0)
+
+    #fixes the missing values for watts
+    Data.columns = Data.columns.str.lstrip()
+    Data["watts"] = Data["watts"].replace("      ", int(0))
+    Data["watts"] = pd.to_numeric(Data["watts"])
+
+    return Data
+
+def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
+    Riderm = RiderMass
+    Bikem = BikeMass
+    m = Riderm+Bikem
+
+    gpe = m*9.8*AltitudeChange
+
+    KEa = 0.5*m*Velocity*Velocity
+    KEb = 0.5*m*VelocityBef*VelocityBef
+
+    KE = KEa - KEb
+    InputEnergy = Watts
+
+    MissingEnergy = InputEnergy - gpe - KE
+    
+    WattsDrag = MissingEnergy/TimeScale
+    
+
+    Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+    cda = (2 * (WattsDrag/Velocity))/(Pressure*Velocity*Velocity)
+    #print("CDA: ", cda,"Energys ",MissingEnergy, "In",InputEnergy, "GPE",gpe,"EK", KE)
+
+    return cda
+
+def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
+    RawData = ReadData(DataPath)
+
+    CDAData = []
+    Time = []
+
+    i = TimeScale
+    while i <= len(RawData["time"])-1:
+        Velocity=RawData["velocity_smooth"][i]
+        Watts=RawData["watts"][i-TimeScale:i].sum()
+        VelocityBef=RawData["velocity_smooth"][i-TimeScale]
+        AltitudeChange=RawData["altitude"][i]-RawData["altitude"][i-TimeScale]
+        Altitude=RawData["altitude"][i]
+        RiderMass=RiderMass
+        BikeMass=BikeMass
+        #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
+
+
+
+        CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
+        Time.append(RawData["time"][i])
+        i = i + TimeScale
+    #print(CDAData)
+    #print(Time)
+
+    data = {'CDA/m^2': [CDAData],
+            'Time/s': [Time]}
+
+    PlotFrame = pd.DataFrame(data)
+
+
+    with sns.axes_style("whitegrid"):
+        fig, axs = plt.subplots(nrows=2, constrained_layout=True)
+
+    ax = sns.boxplot(x = CDAData,ax=axs[0], width=0.3, color="lightgray")
+    add_median_labels(ax)
+    ax.set_xlim(0, 0.7)
+    ax.set_xlabel("CDA/m^2")
+    ax = sns.lineplot(x = Time, y=CDAData,ax=axs[1],  color="lightgray")
+    #ax.set_ylim(0, 0.7)
+    ax.set_xlim(min(RawData["time"]),max(RawData["time"]))
+    ax.set_ylabel("CDA/m^2")
+    ax.set_xlabel("Time/s")
+
+
+
+
+    
+
+
+
+
 def CalcTeamFromInv(DataPath, TeamCodeHeader = "Team Code", PointsHeader = "Points"):
     raw = pd.read_csv(DataPath)
     mid = raw.groupby(TeamCodeHeader).head(10).sort_values(by=[PointsHeader],ascending=[False])
@@ -457,7 +546,7 @@ def DragCalculateFolderPlotterScatters(FolderPath, MassFile, debug = False):
     i = 0
 
 
-def add_median_labels(ax, precision='.1f'):
+def add_median_labels(ax, precision='.3f'):
     lines = ax.get_lines()
     boxes = [c for c in ax.get_children() if type(c).__name__ == 'PathPatch']
     lines_per_box = int(len(lines) / len(boxes))
