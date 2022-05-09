@@ -65,7 +65,7 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
         Watts=RawData["watts"][i-TimeScale:i].sum()
         VelocityBef=RawData["velocity_smooth"][i-TimeScale]
         AltitudeChange=RawData["altitude"][i]-RawData["altitude"][i-TimeScale]
-        Altitude=RawData["altitude"][i]
+        Altitude=RawData["altitude"][i-TimeScale:i].mean()
         RiderMass=RiderMass
         BikeMass=BikeMass
         #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
@@ -130,7 +130,7 @@ def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
         Watts=RawData["watts"][i-TimeScale:i].sum()
         VelocityBef=RawData["velocity_smooth"][i-TimeScale]
         AltitudeChange=RawData["altitude"][i]-RawData["altitude"][i-TimeScale]
-        Altitude=RawData["altitude"][i]
+        Altitude=RawData["altitude"][i-TimeScale:i].mean()
         RiderMass=RiderMass
         BikeMass=BikeMass
         #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
