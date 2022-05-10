@@ -9,6 +9,7 @@ import os
 import seaborn as sns
 import matplotlib.patheffects as path_effects
 import fluids
+from statistics import mean
 
 plt.close("all")
 
@@ -35,6 +36,90 @@ def ReadData(DataPath):
     Data["watts"] = pd.to_numeric(Data["watts"])
 
     return Data
+
+def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimeLowerBound = 10):
+    '''
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value
+    Args: DataPath: File path of data(Note data must include the grade_smooth value in source which is not automatically ticked), RiderMass: mass of rider in kg, PrintData: if true prints raw values of each data point, GradeHillStart: Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climes with periods of changing gradients to become multiple climes), LengthOfClimeLowerBound: if the length of the clime is below this value in seconds it is removed from the data
+    '''
+
+    RawData = ReadData(DataPath)
+
+    i=0
+    AccentTime = [[]]
+    AccentAlt = [[]]
+    Watts = [[]]
+    Grade = [[]]
+
+
+    AccentTimeTemp = []
+    AccentAltTemp = []
+    WattsTemp = []
+    GradeTemp = []
+
+    while i < len(RawData)-10:
+        if(RawData["grade_smooth"][i])>=GradeHillStart:
+            AccentTimeTemp.append(RawData["time"][i])
+            AccentAltTemp.append(RawData["altitude"][i])
+            WattsTemp.append(RawData["watts"][i])
+            GradeTemp.append(RawData["grade_smooth"][i])
+
+        if(RawData["grade_smooth"][i+1])<GradeHillStart:
+            AccentTime.append(AccentTimeTemp)
+            AccentAlt.append(AccentAltTemp)
+            Watts.append(WattsTemp)
+            Grade.append(GradeTemp)
+
+            AccentTimeTemp = []
+            AccentAltTemp = []
+            WattsTemp = []
+            GradeTemp = []
+
+        i = i + 1
+
+    i = 0
+    while i != len(AccentTime):
+        if len(AccentTime[i]) <= LengthOfClimeLowerBound:
+            AccentTime[i] = []
+            AccentAlt[i] = []
+            Watts[i] = []
+            Grade[i] = []
+            #print("FileOmmitted")
+        i = i + 1
+        #print("File Check Loop")
+    i = 0
+    temp = filter(lambda c: c != [], AccentTime)
+    AccentTime = list(temp)
+    temp = filter(lambda c: c != [], AccentAlt)
+    AccentAlt = list(temp)
+    temp = filter(lambda c: c != [], Watts)
+    Watts = list(temp)
+    temp = filter(lambda c: c != [], Grade)
+    Grade = list(temp)
+
+    index = []
+    aveWattsPK=[]
+    aveGrade=[]
+    ElapsedTime = []
+    RiderMass = 75
+    j = 0
+    while i != len(AccentTime):
+        index.append(i)
+        aveWattsPK.append(mean(Watts[i])/RiderMass)
+        aveGrade.append(mean(Grade[i]))
+        ElapsedTime.append(AccentTime[i][-1]-AccentTime[i][0])
+        i = i + 1
+    i = 0
+
+    if PrintData == True:
+        while i != len(AccentTime):
+            print(index[i], aveWattsPK[i], aveGrade[i], ElapsedTime[i])
+            i = i + 1
+        i = 0
+
+
+    plt.scatter(ElapsedTime,aveWattsPK)
+
 
 def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
     '''
