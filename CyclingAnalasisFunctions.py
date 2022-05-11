@@ -47,9 +47,9 @@ def ReadData(DataPath):
 
     return Data
 
-def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimeLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
+def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
     """
-    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb
 
     Parameters
     ----------
@@ -58,11 +58,11 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
     RiderMass : Float
         mass of rider in kg, PrintData: if true prints raw values of each data point and annotates plot to allow for each point to be matched
     GradeHillStart : Float
-        Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climes with periods of changing gradients to become multiple climes)
-    LengthOfClimeLowerBound : Integer
-        if the length of the clime is below this value in seconds it is removed from the data
+        Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climbs with periods of changing gradients to become multiple climbs)
+    LengthOfclimbLowerBound : Integer
+        if the length of the climb is below this value in seconds it is removed from the data
     NumberProcess : Integer
-        sets the number of performances to use in the plotting. selects the furthest from the origin to the closest. will display all if larger than number of climes
+        sets the number of performances to use in the plotting. selects the furthest from the origin to the closest. will display all if larger than number of climbs
     DisplayFitLine : Boolean
         toggles the display of a line of best fit defined by a second order polyfit (note not allways desirable to be on as it causes strange fits for low amounts of data or large spreads in data)
     ----------
@@ -115,7 +115,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
 
     i = 0
     while i != len(AccentTime):
-        if len(AccentTime[i]) <= LengthOfClimeLowerBound:
+        if len(AccentTime[i]) <= LengthOfclimbLowerBound:
             AccentTime[i] = []
             AccentAlt[i] = []
             Watts[i] = []
