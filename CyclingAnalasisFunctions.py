@@ -1,16 +1,11 @@
 import scipy as sp
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.stats import gaussian_kde
-from scipy import stats
 import numpy as np
-import glob
-import os
 import seaborn as sns
 import matplotlib.patheffects as path_effects
 import fluids
 from statistics import mean
-import sklearn as sk
 import datetime
 
 plt.close("all")
@@ -49,7 +44,7 @@ def ReadData(DataPath):
 
 def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
     """
-    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
 
     Parameters
     ----------
