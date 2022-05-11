@@ -89,7 +89,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
             GradeTemp.append(RawData["grade_smooth"][i])
 
 
-        elif(RawData["grade_smooth"][i+1])<GradeHillStart and (RawData["grade_smooth"][i+2])<GradeHillStart and (RawData["grade_smooth"][i+3])<GradeHillStart and (RawData["grade_smooth"][i+4])<GradeHillStart and (RawData["grade_smooth"][i+5])<GradeHillStart and (RawData["grade_smooth"][i+6])<GradeHillStart and (RawData["grade_smooth"][i+7])<GradeHillStart and (RawData["grade_smooth"][i+8])<GradeHillStart and (RawData["grade_smooth"][i+9])<GradeHillStart and (RawData["grade_smooth"][i+10])<GradeHillStart:#lol this is the worst thing ive ever made i did a r/badprogramming meme
+        elif(RawData["grade_smooth"][i+1])<0 and (RawData["grade_smooth"][i+2])<0 and (RawData["grade_smooth"][i+3])<0 and (RawData["grade_smooth"][i+4])<0 and (RawData["grade_smooth"][i+5])<0 and (RawData["grade_smooth"][i+6])<0 and (RawData["grade_smooth"][i+7])<0 and (RawData["grade_smooth"][i+8])<0 and (RawData["grade_smooth"][i+9])<0 and (RawData["grade_smooth"][i+10])<0:#lol this is the worst thing ive ever made i did a r/badprogramming meme
             AccentTime.append(AccentTimeTemp)
             AccentAlt.append(AccentAltTemp)
             Watts.append(WattsTemp)
