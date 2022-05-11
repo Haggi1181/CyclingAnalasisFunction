@@ -11,6 +11,7 @@ import matplotlib.patheffects as path_effects
 import fluids
 from statistics import mean
 import sklearn as sk
+import datetime
 
 plt.close("all")
 
@@ -178,13 +179,18 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
         ProssessingWPK.append(aveWattsPK[Rank[i]])
         ProssessingTime.append(ElapsedTime[Rank[i]])
         if PrintData == True:
-            plt.annotate(tempname, (tempx, tempy))
+            plt.annotate(i, (tempx, tempy))
             grade = mean(Grade[Rank[i]])
             tempname = round(float(tempname), 3)
+            VAM = ((AccentAlt[Rank[i]][-1]-AccentAlt[Rank[i]][0])/tempx)*60*60
             tempy = round(float(tempy), 3)
             tempx = round(float(tempx), 3)
             grade = round(grade, 3)
-            print("Clime Starts at:", tempname, "s  WPK:", tempy, "w  For:", tempx,"s  On a average grade of:", grade, "%")
+            VAM = round(VAM, 3)
+            Start = datetime.timedelta(seconds = tempname)
+            Duration = datetime.timedelta(seconds = tempx)
+
+            print("Index:",i,"  Climb Starts at:", Start, "  WPK:", tempy, "w/kg  For:", Duration,"  On a average grade of:", grade, "%  VAM:", VAM, "m/h")
         i = i + 1
     #print(ProssessingWPK,ProssessingTime)
     i = 0
