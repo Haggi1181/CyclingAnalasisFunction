@@ -62,7 +62,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
         if the length of the clime is below this value in seconds it is removed from the data
     NumberProcess : Integer
         sets the number of performances to use in the plotting. selects the furthest from the origin to the closest. will display all if larger than number of climes
-    DisplayFitLine : Boolien
+    DisplayFitLine : Boolean
         toggles the display of a line of best fit defined by a second order polyfit (note not allways desirable to be on as it causes strange fits for low amounts of data or large spreads in data)
     ----------
     """
