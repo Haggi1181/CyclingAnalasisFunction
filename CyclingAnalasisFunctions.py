@@ -49,7 +49,7 @@ def ReadData(DataPath):
 
 def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimeLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
     """
-    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data
 
     Parameters
     ----------
@@ -190,7 +190,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
             Start = datetime.timedelta(seconds = tempname)
             Duration = datetime.timedelta(seconds = tempx)
 
-            print("Index:",i,"  Climb Starts at:", Start, "  WPK:", tempy, "w/kg  For:", Duration,"  On a average grade of:", grade, "%  VAM:", VAM, "m/h")
+            print("Index:",i,"  Climb Starts at:", Start, "  WPK:", tempy, "w/kg  For:", Duration,"  On a average grade of:", grade, "%  VAM:", VAM, "m/h", "Gain:", (AccentAlt[Rank[i]][-1]-AccentAlt[Rank[i]][0]),"m")
         i = i + 1
     #print(ProssessingWPK,ProssessingTime)
     i = 0
