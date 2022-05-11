@@ -22,7 +22,7 @@ sns.set(rc={'figure.figsize':(15, 5)})
 
 
 def ReadData(DataPath):
-    '''
+    """
     Function to Read Data from files downloaded from strava using the source plugin, fixes issues with spaces in names and empty watt values
 
     Parameters
@@ -34,7 +34,7 @@ def ReadData(DataPath):
     ---------- 
     Data : Pandas dataframe 
         data located at DataPath
-    '''
+    """
 
 
     Data = pd.read_csv(DataPath).fillna(0)
@@ -47,7 +47,7 @@ def ReadData(DataPath):
     return Data
 
 def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimeLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
-    '''
+    """
     Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value
 
     Parameters
@@ -65,7 +65,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
     DisplayFitLine : Boolien
         toggles the display of a line of best fit defined by a second order polyfit (note not allways desirable to be on as it causes strange fits for low amounts of data or large spreads in data)
     ----------
-    '''
+    """
     plt.rcParams.update(plt.rcParamsDefault)
 
     RawData = ReadData(DataPath)
@@ -202,7 +202,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
     plt.ylabel("Watts per Kilo / w kg^-1")
     plt.xlim(left=0)
 
-'''
+"""
 Failed exponential fit for above
     popt, pcov = sp.optimize.curve_fit(fitEXPDecay, ProssessingTime, ProssessingWPK)
     
@@ -216,10 +216,10 @@ Failed exponential fit for above
     def fitEXPDecay(x, m, t, b):
         return m * np.exp(-t * x) + b
 
-'''
+"""
 
 def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
-    '''
+    """
     Internal function that calculates the CDA of a bike rider for CDAPlot
 
     Parameters
@@ -241,7 +241,7 @@ def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, B
     ----------
     cda : Float
         the calculated CDA
-    '''
+    """
     Riderm = RiderMass
     Bikem = BikeMass
     m = Riderm+Bikem
@@ -265,9 +265,9 @@ def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, B
 
     return cda
 
-def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
-    '''
-    Plots CDA over time, resolution is TimeScale, data is presented as a box and whisker plot to identify average value, and plot of CDA/m^2 over time/s Function does not contain logic for non aero drag so be advised it is a overestimation
+def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10):
+    """
+    Plots CDA over time, resolution is TimeScale, data is presented as a box and whisker plot to identify average value, and plot of CDA/m^2 over time/s Function does not contain logic for non aero drag so be advised it is a overestimation. Can create negative values, i think this is from the smoothing in the velocity data available from Strava but that's unconfirmed. Extream high values are caused by events like breaking, bike changes, ect.
 
     Parameters
     ----------
@@ -279,7 +279,7 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
         Mass of bike used
     TimeScale : Integer
         Length of iterations across time in seconds
-    '''
+    """
     RawData = ReadData(DataPath)
 
     CDAData = []
@@ -325,7 +325,7 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
 
 
 def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
-    '''
+    """
     Internal function that calculates the drag of a bike rider for CDAPlot
     Parameters
     ----------
@@ -350,7 +350,7 @@ def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, 
     ----------
     Drag : Float
         the calculated drag
-    '''
+    """
     Riderm = RiderMass
     Bikem = BikeMass
     m = Riderm+Bikem
@@ -370,7 +370,7 @@ def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, 
     return WattsDrag
 
 def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
-    '''
+    """
     Plots drag over time, resolution is TimeScale, data is presented as a drag/w over time/s plot and a drag over speed plot with a function line for interpolation
     
     Parameters
@@ -383,7 +383,7 @@ def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
         Mass of bike used
     TimeScale : Integer
         Length of iterations across time in seconds
-    '''
+    """
     RawData = ReadData(DataPath)
 
     Drag = []
@@ -438,7 +438,7 @@ def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
     ax.legend()
 
 def add_median_labels(ax, precision='.3f'):
-    '''
+    """
     function to add median data to box and whisker plots
     solution adapted from Christian Karcher's answer to:
     https://stackoverflow.com/questions/38649501/labeling-boxplot-in-seaborn-with-median-value
@@ -449,7 +449,7 @@ def add_median_labels(ax, precision='.3f'):
         axis to add the label
     precision : String
         number of decimal places to add to plot
-    '''
+    """
     lines = ax.get_lines()
     boxes = [c for c in ax.get_children() if type(c).__name__ == 'PathPatch']
     lines_per_box = int(len(lines) / len(boxes))
