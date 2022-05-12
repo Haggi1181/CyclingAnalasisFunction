@@ -14,8 +14,6 @@ pd.set_option('display.max_columns', None)  # or 1000
 pd.set_option('display.max_rows', None)  # or 1000
 pd.set_option('display.max_colwidth', None)  # or 199
 
-sns.set(rc={'figure.figsize':(15, 5)})
-
 
 def ReadData(DataPath):
     """
@@ -298,6 +296,9 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = Fals
     WattsPerCDA : Boolean
         Changes the output to a plot of watts per CDA a usefuel metric for identifying the tradeoff between drag and power output ability
     """
+    sns.set(rc={'figure.figsize':(15, 5)})
+
+
     RawData = ReadData(DataPath)
 
     CDAData = []
@@ -426,6 +427,9 @@ def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
     TimeScale : Integer
         Length of iterations across time in seconds
     """
+    sns.set(rc={'figure.figsize':(15, 5)})
+
+
     RawData = ReadData(DataPath)
 
     Drag = []
