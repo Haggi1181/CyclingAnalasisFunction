@@ -279,7 +279,7 @@ def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, B
 
     return cda
 
-def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = False):
+def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = False, WattsPerCDA = False):
     """
     Plots CDA over time, resolution is TimeScale, data is presented as a box and whisker plot to identify average value, and plot of CDA/m^2 over time/s Function does not contain logic for non aero drag so be advised it is a overestimation. Can create negative values, i think this is from the smoothing in the velocity data available from Strava but that's unconfirmed. Extream high values are caused by events like breaking, bike changes, ect.
 
@@ -295,6 +295,8 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = Fals
         Length of iterations across time in seconds
     TempCorrection : Boolean
         Toggles a temp correction, if on the data file needs a temp field found in the toggles of Sauce
+    WattsPerCDA : Boolean
+        Changes the output to a plot of watts per CDA a usefuel metric for identifying the tradeoff between drag and power output ability
     """
     RawData = ReadData(DataPath)
 
@@ -311,17 +313,27 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = Fals
         RiderMass=RiderMass
         BikeMass=BikeMass
         #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
-
-        if TempCorrection == True:
-            temp = RawData["temp"][i]
-            CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale, Temp = temp, TempCorrection = TempCorrection))
+        if WattsPerCDA == False:
+            if TempCorrection == True:
+                temp = RawData["temp"][i]
+                CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale, Temp = temp, TempCorrection = TempCorrection))
+            else:
+                CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
         else:
-            CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
-
+            if TempCorrection == True:
+                temp = RawData["temp"][i]
+                tempory = (Watts/calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale, Temp = temp, TempCorrection = TempCorrection))
+                #print(tempory)
+                CDAData.append(tempory)
+            else:
+                tempory = (Watts/TimeScale) / calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale)
+                #print(tempory)
+                CDAData.append(tempory)
         Time.append(RawData["time"][i])
         i = i + TimeScale
     #print(CDAData)
     #print(Time)
+
 
     data = {'CDA/m^2': [CDAData],
             'Time/s': [Time]}
@@ -332,15 +344,26 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = Fals
     with sns.axes_style("whitegrid"):
         fig, axs = plt.subplots(nrows=2, constrained_layout=True)
 
-    ax = sns.boxplot(x = CDAData,ax=axs[0], width=0.3, color="lightgray")
-    add_median_labels(ax)
-    ax.set_xlim(0, 0.7)
-    ax.set_xlabel("CDA/m^2")
-    ax = sns.lineplot(x = Time, y=CDAData,ax=axs[1],  color="lightgray")
-    #ax.set_ylim(0, 0.7)
-    ax.set_xlim(min(RawData["time"]),max(RawData["time"]))
-    ax.set_ylabel("CDA/m^2")
-    ax.set_xlabel("Time/s")
+    if WattsPerCDA == False:
+        ax = sns.boxplot(x = CDAData,ax=axs[0], width=0.3, color="lightgray")
+        add_median_labels(ax)
+        #ax.set_xlim(0, 0.7)
+        ax.set_xlabel("CDA / m^2")
+        ax = sns.lineplot(x = Time, y=CDAData,ax=axs[1],  color="lightgray")
+        #ax.set_ylim(0, 0.7)
+        ax.set_xlim(min(RawData["time"]),max(RawData["time"]))
+        ax.set_ylabel("CDA / m^2")
+        ax.set_xlabel("Time / s")
+    else:
+        ax = sns.boxplot(x = CDAData,ax=axs[0], width=0.3, color="lightgray")
+        add_median_labels(ax)
+        #ax.set_xlim(0, 0.7)
+        ax.set_xlabel("Watts Per CDA / w m-1^-2")
+        ax = sns.lineplot(x = Time, y=CDAData,ax=axs[1],  color="lightgray")
+        #ax.set_ylim(0, 0.7)
+        ax.set_xlim(min(RawData["time"]),max(RawData["time"]))
+        ax.set_ylabel("Watts Per CDA / w m-1^-2")
+        ax.set_xlabel("Time/s")
 
 
 def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
