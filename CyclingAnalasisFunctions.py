@@ -220,7 +220,7 @@ Failed exponential fit for above
 
 """
 
-def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
+def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1, Temp = 0, TempCorrection = False):
     """
     Internal function that calculates the CDA of a bike rider for CDAPlot
 
@@ -238,6 +238,10 @@ def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, B
         Mass of the bike riders bike, 
     TimeScale : Integer
         Length of iterations in seconds 
+    Temp : Float
+        Passes the temperature recorded, used if TempCorrection = True
+    TempCorrection : Boolean
+        Toggles a temp correction, if on the data file needs a temp field found in the toggles of Sauce
 
     Returns
     ----------
@@ -261,13 +265,21 @@ def calcCDA(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, B
     WattsDrag = MissingEnergy/TimeScale
     
 
-    Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+    if TempCorrection == True:
+        tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+
+        Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+
+    else:
+        Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+
+
     cda = (2 * (WattsDrag/Velocity))/(Pressure*Velocity*Velocity)
     #print("CDA: ", cda,"Energys ",MissingEnergy, "In",InputEnergy, "GPE",gpe,"EK", KE)
 
     return cda
 
-def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10):
+def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = False):
     """
     Plots CDA over time, resolution is TimeScale, data is presented as a box and whisker plot to identify average value, and plot of CDA/m^2 over time/s Function does not contain logic for non aero drag so be advised it is a overestimation. Can create negative values, i think this is from the smoothing in the velocity data available from Strava but that's unconfirmed. Extream high values are caused by events like breaking, bike changes, ect.
 
@@ -281,6 +293,8 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10):
         Mass of bike used
     TimeScale : Integer
         Length of iterations across time in seconds
+    TempCorrection : Boolean
+        Toggles a temp correction, if on the data file needs a temp field found in the toggles of Sauce
     """
     RawData = ReadData(DataPath)
 
@@ -298,9 +312,12 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10):
         BikeMass=BikeMass
         #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
 
+        if TempCorrection == True:
+            temp = RawData["temp"][i]
+            CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale, Temp = temp, TempCorrection = TempCorrection))
+        else:
+            CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
 
-
-        CDAData.append(calcCDA(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
         Time.append(RawData["time"][i])
         i = i + TimeScale
     #print(CDAData)
