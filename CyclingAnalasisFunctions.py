@@ -1,9 +1,12 @@
 import scipy as sp
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import matplotlib.patheffects as path_effects
 from statistics import mean
+import datetime
+import fluids
 
 plt.close("all")
 
@@ -39,7 +42,7 @@ def ReadData(DataPath):
 
     return Data
 
-def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, NumberProcess = 10, DisplayFitLine = True):
+def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
     """
     Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
 
@@ -52,7 +55,9 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
     GradeHillStart : Float
         Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climbs with periods of changing gradients to become multiple climbs)
     LengthOfclimbLowerBound : Integer
-        if the length of the climb is below this value in seconds it is removed from the data
+        If the length of the climb is below this value in seconds it is removed from the data
+    ClimeLengthEnd : Integer
+        Code sums this number of next gradients, if that sum is smaller than 0 the clime is declared over
     NumberProcess : Integer
         sets the number of performances to use in the plotting. selects the furthest from the origin to the closest. will display all if larger than number of climbs
     DisplayFitLine : Boolean
@@ -73,7 +78,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
     AccentAltTemp = []
     WattsTemp = []
     GradeTemp = []
-
+    
     while i < len(RawData)-10:
         if(RawData["grade_smooth"][i])>=GradeHillStart:
             AccentTimeTemp.append(RawData["time"][i])
@@ -81,8 +86,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
             WattsTemp.append(RawData["watts"][i])
             GradeTemp.append(RawData["grade_smooth"][i])
 
-
-        elif(RawData["grade_smooth"][i+1])<0 and (RawData["grade_smooth"][i+2])<0 and (RawData["grade_smooth"][i+3])<0 and (RawData["grade_smooth"][i+4])<0 and (RawData["grade_smooth"][i+5])<0 and (RawData["grade_smooth"][i+6])<0 and (RawData["grade_smooth"][i+7])<0 and (RawData["grade_smooth"][i+8])<0 and (RawData["grade_smooth"][i+9])<0 and (RawData["grade_smooth"][i+10])<0:#lol this is the worst thing ive ever made i did a r/badprogramming meme
+        elif(sum(RawData["grade_smooth"][i:i+ClimeLengthEnd])<0.0):
             AccentTime.append(AccentTimeTemp)
             AccentAlt.append(AccentAltTemp)
             Watts.append(WattsTemp)
