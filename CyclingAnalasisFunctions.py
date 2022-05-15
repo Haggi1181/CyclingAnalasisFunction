@@ -40,6 +40,71 @@ def ReadData(DataPath):
 
     return Data
 
+
+
+def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, RiderMass = 75, BikeMass = 7, MechanicalDrag = 50, CDA = 0.2, Drafting = False, Temp = 0.0, TempFix = False):
+    """
+    Calculates the average watts and the watts per kilo for a climb, obvisuly a number of these veriables are hard to know so play around with things like Mechanical Drag to get a range of rough values, Drafting drops the CDA by 1/3, I honestly have no idea if this is valid
+    Parameters
+    ----------
+    Distence : Float
+        Distence of the climb in meters
+    StartAltitude : Float
+        Altitude at start of climb in meters
+    EndAltitude : Float
+        Altitude at end of climb in meters
+    TimeTaken : Int
+        Time taken to climb in seconds
+    RiderMass : Float
+        Rider mass in kg
+    BikeMass : Float
+        Bike mass in kg
+    MechanicalDrag : Float
+        Mechancial drag in watts
+    CDA : Float
+        CDA of rider bike system
+    Drafting : Bool
+        If true drops CDA to 0.6 of CDA
+    Temp : Float
+        Temperature of day in degrees celsius
+    TempFix : Bool
+        Toggles using the temp above to calculate air dencity corrected for temp
+    ----------
+    """
+    AltitudeChange = EndAltitude - StartAltitude
+    m = RiderMass + BikeMass
+    GPE = m*9.8*AltitudeChange
+
+    Altitude = StartAltitude + AltitudeChange/2
+
+    Velocity = Distence/TimeTaken
+    if TempFix == False:
+        if Drafting == False:
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+            Drag = (CDA*(Pressure*Velocity*Velocity*Velocity))/(2)
+        else:
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+            Drag = ((CDA*0.6)*(Pressure*Velocity*Velocity*Velocity))/(2)
+    else:
+        if Drafting == False:
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+            Drag = (CDA*(Pressure*Velocity*Velocity*Velocity))/(2)
+        else:
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+            Drag = ((CDA*0.6)*(Pressure*Velocity*Velocity*Velocity))/(2)
+    DragEnergy = Drag*TimeTaken
+
+    MechanicalDragEnergy = MechanicalDrag*TimeTaken
+    
+    TotalEnergyLost = GPE + DragEnergy + MechanicalDragEnergy
+    RiderPowerOutput = TotalEnergyLost/TimeTaken
+    WPK = RiderPowerOutput/RiderMass
+
+    print("AveWatts: ", RiderPowerOutput, "w  At:", WPK, "w/kg  For:", TimeTaken, "s")
+
+
 def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
     """
     Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
@@ -367,7 +432,7 @@ def CDAPlot(DataPath, RiderMass, BikeMass, TimeScale = 10, TempCorrection = Fals
         ax.set_xlabel("Time/s")
 
 
-def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = 1):
+def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, RiderMass, BikeMass, TimeScale = 1):
     """
     Internal function that calculates the drag of a bike rider for CDAPlot
     Parameters
