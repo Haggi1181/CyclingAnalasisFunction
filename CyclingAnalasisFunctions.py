@@ -40,15 +40,128 @@ def ReadData(DataPath):
 
     return Data
 
-
-
-def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, RiderMass = 75, BikeMass = 7, MechanicalDrag = 50, CDA = 0.2, Drafting = False, Temp = 0.0, TempFix = False):
+def PerformanceEstimator(DataPath, AvePowerInput, MaxPowerInput, CDA, RiderMass, BikeMass, TempCorrection = False, Temp = 0):
     """
-    Calculates the average watts and the watts per kilo for a climb, obvisuly a number of these veriables are hard to know so play around with things like Mechanical Drag to get a range of rough values, Drafting drops the CDA by 1/3, I honestly have no idea if this is valid
+    WIP
+    
+    """
+    plt.rcParams.update(plt.rcParamsDefault)
+    RawData = ReadData(DataPath)
+
+
+    velocity = 0
+    velocityPlotting = [velocity]
+    TimeElapsed = [0]
+    Mass = RiderMass + BikeMass
+
+    DistanceTraveled = 0
+
+    while DistanceTraveled < (RawData["distance"].iloc[-1]-RawData["distance"].iloc[0]):
+        i = RawData['distance'].sub(DistanceTraveled).abs().idxmin()
+        Altitude = RawData["altitude"][i]
+        if TempCorrection == True:
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+
+        else:
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+
+
+        WattsDrag = (CDA*(Pressure*velocity*velocity*velocity))/(2)
+        AltitudeChange = RawData["altitude"][i]-RawData["altitude"][i+1]
+        GPE = Mass*9.8*AltitudeChange
+
+        NetEnergy = AvePowerInput - WattsDrag - GPE
+        
+        if velocity - ((-2*NetEnergy)/(Mass))**(1/2) <= 0:
+            NetEnergy = MaxPowerInput - WattsDrag - GPE
+
+        if NetEnergy > 0: 
+            velocity = velocity + ((2*NetEnergy)/(Mass))**(1/2)
+        elif NetEnergy < 0:
+            velocity = velocity - ((-2*NetEnergy)/(Mass))**(1/2)
+        else:
+            velocity = velocity
+        velocityPlotting.append(velocity)
+        TimeElapsed.append(i)
+        
+        DistanceTraveled = DistanceTraveled + velocity
+        i = i + 1
+    #print(TimeElapsed,velocityPlotting)
+    TimeTaken = TimeElapsed[-1]
+    DistanceRidden = (RawData["distance"].iloc[-1]-RawData["distance"].iloc[0])
+    DistanceRidden = round(DistanceRidden, 3)
+    AveSpeed = mean(velocityPlotting)
+    AveSpeed = round(AveSpeed, 3)
+
+    print("Took:", TimeTaken, "s  To travel:",  DistanceRidden,"m  With a average speed of:", AveSpeed, "m/s")
+    plt.plot(TimeElapsed,velocityPlotting)
+
+
+def RiderPowerEstimator(DataPath, RiderMass, BikeMass, CDA, MechanicalDrag, TimeScale = 10, TempCorrection = False):
+    """
+    WIP
+    
+    """
+    m = RiderMass + BikeMass
+    RawData = ReadData(DataPath)
+    PowerOut = []
+    Time = []
+    i = TimeScale
+    while i < len(RawData["time"]):
+        Velocity=RawData["velocity_smooth"][i]
+        VelocityBef=RawData["velocity_smooth"][i-TimeScale]
+        AltitudeChange=RawData["altitude"][i]-RawData["altitude"][i-TimeScale]
+        Altitude=RawData["altitude"][i-TimeScale:i].mean()
+        RiderMass=RiderMass
+        BikeMass=BikeMass
+        #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
+        if TempCorrection == True:
+            Temp=RawData["temp"]
+            gpe = m*9.8*AltitudeChange
+
+            KEa = 0.5*m*Velocity*Velocity
+            KEb = 0.5*m*VelocityBef*VelocityBef
+
+            KE = KEa - KEb
+            
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+
+            Drag = (CDA*(Pressure*Velocity*Velocity*Velocity))/(2)
+
+            RiderOutput = Drag + MechanicalDrag + gpe + KE
+
+            PowerOut.append(RiderOutput)
+        else:
+            gpe = m*9.8*AltitudeChange
+
+            KEa = 0.5*m*Velocity*Velocity
+            KEb = 0.5*m*VelocityBef*VelocityBef
+
+            KE = KEa - KEb
+            
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+
+            Drag = (CDA*(Pressure*Velocity*Velocity*Velocity))/(2)
+
+            RiderOutput = Drag + MechanicalDrag + gpe + KE
+            PowerOut.append(RiderOutput)
+
+        Time.append(RawData["time"][i])
+        i = i + TimeScale
+    plt.plot(Time, PowerOut)
+
+
+def PerformanceCalculator(Distance, StartAltitude, EndAltitude, TimeTaken, RiderMass = 75, BikeMass = 7, MechanicalDrag = 50, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, Temp = 0.0, TempFix = False, EnergyPrint = False):
+    """
+    Calculates the average watts and the watts per kilo, a number of these variables are hard to know so play around with things like Mechanical Drag to get a range of rough values, Drafting drops the CDA by DraftingEffect, by defult its set to 0.6 which is around following a bike at around 50-60cm according to: https://doi.org/10.1016/j.proeng.2016.06.186 although I am not convinced by the paper it seems like a rough good guess
     Parameters
     ----------
-    Distence : Float
-        Distence of the climb in meters
+    Distance : Float
+        Distance of the climb in meters
     StartAltitude : Float
         Altitude at start of climb in meters
     EndAltitude : Float
@@ -60,11 +173,13 @@ def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, 
     BikeMass : Float
         Bike mass in kg
     MechanicalDrag : Float
-        Mechancial drag in watts
+        Mechanical drag in watts
     CDA : Float
         CDA of rider bike system
     Drafting : Bool
         If true drops CDA to 0.6 of CDA
+    DraftingEffect: Float
+        % decrees on the drag
     Temp : Float
         Temperature of day in degrees celsius
     TempFix : Bool
@@ -77,14 +192,14 @@ def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, 
 
     Altitude = StartAltitude + AltitudeChange/2
 
-    Velocity = Distence/TimeTaken
+    Velocity = Distance/TimeTaken
     if TempFix == False:
         if Drafting == False:
             Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
             Drag = (CDA*(Pressure*Velocity*Velocity*Velocity))/(2)
         else:
             Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
-            Drag = ((CDA*0.6)*(Pressure*Velocity*Velocity*Velocity))/(2)
+            Drag = ((CDA*DraftingEffect)*(Pressure*Velocity*Velocity*Velocity))/(2)
     else:
         if Drafting == False:
             tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
@@ -93,7 +208,7 @@ def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, 
         else:
             tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
             Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
-            Drag = ((CDA*0.6)*(Pressure*Velocity*Velocity*Velocity))/(2)
+            Drag = ((CDA*DraftingEffect)*(Pressure*Velocity*Velocity*Velocity))/(2)
     DragEnergy = Drag*TimeTaken
 
     MechanicalDragEnergy = MechanicalDrag*TimeTaken
@@ -104,10 +219,13 @@ def ClimbPerformanceCalculator(Distence, StartAltitude, EndAltitude, TimeTaken, 
 
     print("AveWatts: ", RiderPowerOutput, "w  At:", WPK, "w/kg  For:", TimeTaken, "s")
 
+    if EnergyPrint == True:
+        print("Rider expended:", TotalEnergyLost, "J  Gravitational Potential Energy:", GPE, "J  Aerodynamic Drag Energy:", DragEnergy, "J  Mechanical Drag Energy:", MechanicalDragEnergy, "J")
 
-def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfclimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
+
+def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
     """
-    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, dissagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative mesure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshhold value, disagreements with strava segment data has been found so take both with a pinch of salt, both are only as good as the altitude data. I think this is probably most usefull for comparason in the race and also as a relative measure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
 
     Parameters
     ----------
@@ -117,7 +235,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
         mass of rider in kg, PrintData: if true prints raw values of each data point and annotates plot to allow for each point to be matched
     GradeHillStart : Float
         Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climbs with periods of changing gradients to become multiple climbs)
-    LengthOfclimbLowerBound : Integer
+    LengthOfClimbLowerBound : Integer
         If the length of the climb is below this value in seconds it is removed from the data
     ClimeLengthEnd : Integer
         Code sums this number of next gradients, if that sum is smaller than 0 the clime is declared over
@@ -174,7 +292,7 @@ def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOf
 
     i = 0
     while i != len(AccentTime):
-        if len(AccentTime[i]) <= LengthOfclimbLowerBound:
+        if len(AccentTime[i]) <= LengthOfClimbLowerBound:
             AccentTime[i] = []
             AccentAlt[i] = []
             Watts[i] = []
@@ -445,8 +563,6 @@ def calcDrag(Velocity, VelocityBef, Watts, AltitudeChange, RiderMass, BikeMass, 
         Power output of the bike rider
     AltitudeChange : Float
         Change in altitude the bike rider has gone through through the timescale
-    Altitude : Float
-        Current altitude of the bike rider
     RiderMass : Float
         Mass of the bike rider
     BikeMass : Float
@@ -511,7 +627,7 @@ def DragPlot(DataPath, RiderMass, BikeMass, TimeScale = 1):
         RiderMass=RiderMass
         BikeMass=BikeMass
         #print("Vel", Velocity,"VelocityBef", VelocityBef,"Wat", Watts,"AltChange", AltitudeChange,"Alt", Altitude,"Mass", RiderMass, BikeMass)
-        Drag.append(calcDrag(Velocity, VelocityBef,  Watts, AltitudeChange, Altitude, RiderMass, BikeMass, TimeScale = TimeScale))
+        Drag.append(calcDrag(Velocity, VelocityBef,  Watts, AltitudeChange, RiderMass, BikeMass, TimeScale = TimeScale))
         Time.append(float(RawData["time"][i]))
         Velocitys.append(Velocity)
         i = i + TimeScale
