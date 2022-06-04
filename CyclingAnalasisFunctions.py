@@ -217,11 +217,169 @@ def PerformanceCalculator(Distance, StartAltitude, EndAltitude, TimeTaken, Rider
     RiderPowerOutput = TotalEnergyLost/TimeTaken
     WPK = RiderPowerOutput/RiderMass
 
-    print("AveWatts: ", RiderPowerOutput, "w  At:", WPK, "w/kg  For:", TimeTaken, "s")
+    RiderPowerOutput = round(float(RiderPowerOutput), 3)
+    WPK = round(float(WPK), 3)
+    Velocity = round(float(Velocity), 3)
+
+    print("AveWatts: ", RiderPowerOutput, "w , At:", WPK, "w/kg,  For:", TimeTaken, "s,  At a speed of:", Velocity, "m/s")
 
     if EnergyPrint == True:
-        print("Rider expended:", TotalEnergyLost, "J  Gravitational Potential Energy:", GPE, "J  Aerodynamic Drag Energy:", DragEnergy, "J  Mechanical Drag Energy:", MechanicalDragEnergy, "J")
+        TotalEnergyLost = round(float(TotalEnergyLost), 3)
+        GPE = round(float(GPE), 3)
+        DragEnergy = round(float(DragEnergy), 3)
+        MechanicalDragEnergy = round(float(MechanicalDragEnergy), 3)
+        
+        print("Rider expended:", TotalEnergyLost, "J,  Gravitational Potential Energy:", GPE, "J,  Aerodynamic Drag Energy:", DragEnergy, "J,  Mechanical Drag Energy:", MechanicalDragEnergy, "J")
 
+def WPKFinderEstimator(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
+    """
+    Function to find the Watts per Kg of a bike rider over a large period of time identifying periods of continuous grade over a threshold value, this function uses a estimate of the WPK derived from VAM from the equation found on https://en.wikipedia.org/wiki/VAM_(bicycling), it seems to underestimate vs raw data approaches probably due to a lack of considering aero and mechanical drag effects. I think this is probably most useful for comparison in the race and also as a relative measure of how hard the race went up each climb. Hill definitions can cause downhills to overpower a uphill creating a anti hill, play around with the settings provided to try and mitigate this.
+
+    Parameters
+    ----------
+    DataPath : String
+        File path of data(Note data must include the grade_smooth value in source which is not automatically ticked)
+    RiderMass : Float
+        mass of rider in kg, PrintData: if true prints raw values of each data point and annotates plot to allow for each point to be matched
+    GradeHillStart : Float
+        Threshold value of which defines a hill over it data is recorded under it the hill is decided over(note this may cause climbs with periods of changing gradients to become multiple climbs)
+    LengthOfClimbLowerBound : Integer
+        If the length of the climb is below this value in seconds it is removed from the data
+    ClimeLengthEnd : Integer
+        Code sums this number of next gradients, if that sum is smaller than 0 the clime is declared over
+    NumberProcess : Integer
+        sets the number of performances to use in the plotting. selects the furthest from the origin to the closest. will display all if larger than number of climbs
+    DisplayFitLine : Boolean
+        toggles the display of a line of best fit defined by a second order polyfit (note not allways desirable to be on as it causes strange fits for low amounts of data or large spreads in data)
+    ----------
+    """
+    plt.rcParams.update(plt.rcParamsDefault)
+
+    RawData = ReadData(DataPath)
+
+    i=0
+    AccentTime = [[]]
+    AccentAlt = [[]]
+    Grade = [[]]
+
+    AccentTimeTemp = []
+    AccentAltTemp = []
+    GradeTemp = []
+    
+    while i < len(RawData)-10:
+        if(RawData["grade_smooth"][i])>=GradeHillStart:
+            AccentTimeTemp.append(RawData["time"][i])
+            AccentAltTemp.append(RawData["altitude"][i])
+            GradeTemp.append(RawData["grade_smooth"][i])
+
+        elif(sum(RawData["grade_smooth"][i:i+ClimeLengthEnd])<0.0):
+            AccentTime.append(AccentTimeTemp)
+            AccentAlt.append(AccentAltTemp)
+            Grade.append(GradeTemp)
+
+            AccentTimeTemp = []
+            AccentAltTemp = []
+            GradeTemp = []
+
+        else:
+            AccentTimeTemp.append(RawData["time"][i])
+            AccentAltTemp.append(RawData["altitude"][i])
+            GradeTemp.append(RawData["grade_smooth"][i])
+        i = i + 1
+
+    AccentTime.append(AccentTimeTemp)
+    AccentAlt.append(AccentAltTemp)
+    Grade.append(GradeTemp)
+
+    i = 0
+    while i != len(AccentTime):
+        if len(AccentTime[i]) <= LengthOfClimbLowerBound:
+            AccentTime[i] = []
+            AccentAlt[i] = []
+            Grade[i] = []
+        i = i + 1
+    i = 0
+    temp = filter(lambda c: c != [], AccentTime)
+    AccentTime = list(temp)
+    temp = filter(lambda c: c != [], AccentAlt)
+    AccentAlt = list(temp)
+    temp = filter(lambda c: c != [], Grade)
+    Grade = list(temp)
+
+    index = []
+    aveWattsPK=[]
+    aveGrade=[]
+    ElapsedTime = []
+    j = 0
+    while i != len(AccentTime):
+        index.append(i)
+        TimeTaken = float(AccentTime[i][-1]-AccentTime[i][0])
+        VAM = ((AccentAlt[i][-1]-AccentAlt[i][0])/TimeTaken)*60*60
+        EstWattsPK = VAM / (200 + 10*mean(Grade[i]))
+        aveWattsPK.append(EstWattsPK)
+        aveGrade.append(mean(Grade[i]))
+        ElapsedTime.append(AccentTime[i][-1]-AccentTime[i][0])
+        i = i + 1
+    i = 0
+
+
+    GoodnessIndex = []
+    tempgood = 0.0
+    while i != len(AccentTime):
+        tempgood = (aveWattsPK[i]/max(aveWattsPK))+(ElapsedTime[i]/max(ElapsedTime))
+        GoodnessIndex.append(tempgood)
+        i = i + 1
+    i = 0
+
+    Rank = sp.argsort(GoodnessIndex)[::-1]
+    ProssessingWPK = []
+    ProssessingTime = []
+    plt.scatter(ElapsedTime,aveWattsPK, c="lightgray")
+
+
+    if NumberProcess > len(Rank):
+        NumberProcess = len(Rank)
+
+    while i < NumberProcess:
+        if PrintData == True:
+            plt.scatter(ElapsedTime[Rank[i]],aveWattsPK[Rank[i]], c="dimgray", label = ("Starts at:",AccentTime[Rank[i]][0]))
+        else:
+            plt.scatter(ElapsedTime[Rank[i]],aveWattsPK[Rank[i]], c="k")
+        tempname = str(AccentTime[Rank[i]][0])
+        #print(tempname)
+        tempy = float(aveWattsPK[Rank[i]])
+        tempx = float(ElapsedTime[Rank[i]])
+        #print(tempx,tempy)
+        ProssessingWPK.append(aveWattsPK[Rank[i]])
+        ProssessingTime.append(ElapsedTime[Rank[i]])
+        if PrintData == True:
+            plt.annotate(i, (tempx, tempy))
+            grade = mean(Grade[Rank[i]])
+            tempname = round(float(tempname), 3)
+            VAM = ((AccentAlt[Rank[i]][-1]-AccentAlt[Rank[i]][0])/tempx)*60*60
+            tempy = round(float(tempy), 3)
+            tempx = round(float(tempx), 3)
+            grade = round(grade, 3)
+            VAM = round(VAM, 3)
+            Start = datetime.timedelta(seconds = tempname)
+            Duration = datetime.timedelta(seconds = tempx)
+
+            print("Index:",i,"  Climb Starts at:", Start, "  WPK:", tempy, "w/kg  For:", Duration,"  On a average grade of:", grade, "%  VAM:", VAM, "m/h", "Gain:", (AccentAlt[Rank[i]][-1]-AccentAlt[Rank[i]][0]),"m")
+        i = i + 1
+
+    i = 0
+    temp = np.polyfit(ProssessingTime,ProssessingWPK,2)
+    linefitfunc = np.poly1d(temp)
+
+    linefitx=np.linspace(min(ElapsedTime),max(ElapsedTime),500)
+    linefity=linefitfunc(linefitx)
+    if DisplayFitLine == True:
+        plt.plot(linefitx,linefity, ls = '--', c="gray")
+    
+    
+    plt.xlabel("Time/s")
+    plt.ylabel("Watts per Kilo / w kg^-1")
+    plt.xlim(left=0)
 
 def WPKFinder(DataPath, RiderMass, PrintData=False, GradeHillStart = 1, LengthOfClimbLowerBound = 10, ClimeLengthEnd = 10, NumberProcess = 10, DisplayFitLine = True):
     """
