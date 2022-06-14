@@ -7,6 +7,8 @@ import matplotlib.patheffects as path_effects
 from statistics import mean
 import datetime
 import fluids
+import glob
+import os
 
 plt.close("all")
 
@@ -39,6 +41,151 @@ def ReadData(DataPath):
     Data["watts"] = pd.to_numeric(Data["watts"])
 
     return Data
+
+def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "MaxExp", PlotName = "nan", leg = False):
+    """
+    Internal function that calculates the CDA of a bike rider for CDAPlot
+
+    Parameters
+    ----------
+    DataPath : String
+        Path for raw data, file must have a power data
+    ScaleFactor : Int
+        Number of iterations to perform the growth model for Exp and Lin
+    InitialSample : Int
+        Start point to calculate power / s
+    output : Boolean
+        Toggles returns for function
+    Visualize : Boolean
+        Toggles plotting for function
+    GrowthModel : String
+        Changes model for finding different scales, 
+        options:
+            Exp - Doubles each time
+            Lin - Adds ScaleFactor each time
+            MaxLin - Same as Lin but automatically stops once the largest number of additions have been performed
+            MaxEXP - Same as Exp but automatically stops once the largest number of doubles have been performed
+    PlotName : String
+        Passes the temperature recorded, used if TempCorrection = True
+
+
+    Returns
+    ----------
+    TimeScales : 1DArray[Float]
+        Array of all the x values / lengths sampled
+    MaxPowers : 1DArray[Float]
+        Array of all the y values / max powers for TimeScales lengths
+    """
+    RawData = ReadData(DataPath)
+
+    PowerResults = []
+    MaxPowers = []
+    TimeScales = []
+    i=0
+    if GrowthModel == "Exp":
+        while i < ScaleFactor:
+            temp = RawData["watts"].rolling(InitialSample).mean()
+            temp = [x for x in temp if np.isnan(x) == False]
+            PowerResults.append(temp)
+            TimeScales.append(InitialSample)
+            InitialSample = InitialSample*2
+            i = i + 1
+        i=0
+    if GrowthModel == "Lin":
+        sample = InitialSample
+        while i < ScaleFactor:
+            temp = RawData["watts"].rolling(sample).mean()
+            temp = [x for x in temp if np.isnan(x) == False]
+            PowerResults.append(temp)
+            TimeScales.append(sample)
+            sample = sample + InitialSample
+            i = i + 1
+        i=0
+    if GrowthModel == "MaxLin":
+        sample = InitialSample
+        while i < len(RawData["watts"]):
+            temp = RawData["watts"].rolling(sample).mean()
+            temp = [x for x in temp if np.isnan(x) == False]
+            PowerResults.append(temp)
+            TimeScales.append(sample)
+            sample = sample + InitialSample
+            i = sample
+        i=0
+        ScaleFactor = len(PowerResults)
+    if GrowthModel == "MaxExp":
+        while i < len(RawData["watts"]):
+            temp = RawData["watts"].rolling(InitialSample).mean()
+            temp = [x for x in temp if np.isnan(x) == False]
+            PowerResults.append(temp)
+            TimeScales.append(InitialSample)
+            InitialSample = InitialSample*2
+            i = i + InitialSample
+        i=0
+        ScaleFactor = len(PowerResults)
+    while i < ScaleFactor:
+        #print(i)
+        #print(max(PowerResults[i]))
+        MaxPowers.append(max(PowerResults[i]))
+        i = i + 1
+    #print(MaxPowers)
+
+    if Visualize == True:
+        plt.xlabel("Time / s")
+        plt.ylabel("Power / w")
+        plt.plot(TimeScales, MaxPowers, label = PlotName)
+        if leg == True:
+            plt.legend()
+
+    if output == True:
+        return(TimeScales,MaxPowers)
+
+
+def FolderPowerProfileCalculator(FolderPath, PrintRawData = False, GrowthModel = "MaxExp", ScaleFactor=10, InitialSample = 5):
+    """
+    Internal function that calculates the CDA of a bike rider for CDAPlot
+
+    Parameters
+    ----------
+    FolderPath : String
+        Path for folder containing raw data, files must have a power data, must be no other .txt files in that directory
+    PrintRawData : Boolean
+        Toggles outputting raw data as a printed output
+    GrowthModel : String
+        Changes model for finding different scales, 
+        options:
+            Exp - Doubles each time
+            Lin - Adds each time
+            Max - Increases by 1 each time (warning runs slow, for longer rides large scale processing using this becomes impractical)
+            MaxEXP - Same as Exp but automatically stops once the largest number of doubles have been performed
+    ScaleFactor : Int
+        Number of iterations to perform the growth model for Exp and Lin
+    InitialSample : Int
+        Start point to calculate power / s
+    """
+    arrFilePaths = []
+    arrFileName = []
+    FolderPath = FolderPath + "/*.csv"
+    for filepath in (glob.glob(FolderPath)):
+        arrFilePaths.append(filepath)
+        arrFileName.append(os.path.splitext(os.path.basename(filepath))[0])
+    
+    i = 0
+    if PrintRawData == True:
+        print("Data presented as time scale/s, power for that scale")
+    
+    while i< len(arrFilePaths):
+        
+        time, power = PowerProfileCalculator(arrFilePaths[i], ScaleFactor = ScaleFactor, InitialSample = InitialSample, output = True, Visualize = True, GrowthModel = GrowthModel, PlotName = arrFileName[i], leg = True)
+        if PrintRawData == True:
+            print(arrFileName[i])
+            j = 0
+            while j < len(time):
+                print(time[j], power[j])
+                j = j+1
+        i = i+1
+    i = 0
+
+    #PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "Exp", PlotName = "nan")
 
 def PerformanceEstimator(DataPath, AvePowerInput, MaxPowerInput, CDA, RiderMass, BikeMass, TempCorrection = False, Temp = 0):
     """
