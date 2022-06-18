@@ -42,7 +42,7 @@ def ReadData(DataPath):
 
     return Data
 
-def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "MaxExp", PlotName = "nan", leg = False):
+def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "Custom", CustomLocations = [5, 10, 30, 60, 300, 600, 1200, 1800, 3600], PlotName = "nan", leg = False):
     """
     Internal function that calculates the CDA of a bike rider for CDAPlot
 
@@ -122,13 +122,21 @@ def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output =
             i = i + InitialSample
         i=0
         ScaleFactor = len(PowerResults)
+    #print(MaxPowers)
+    if GrowthModel == "Custom":
+        while i < len(CustomLocations):
+            temp = RawData["watts"].rolling(CustomLocations[i]).mean()
+            temp = [x for x in temp if np.isnan(x) == False]
+            PowerResults.append(temp)
+            TimeScales.append(CustomLocations[i])
+            i = i + 1
+        i=0
+        ScaleFactor = len(CustomLocations)
     while i < ScaleFactor:
         #print(i)
         #print(max(PowerResults[i]))
         MaxPowers.append(max(PowerResults[i]))
         i = i + 1
-    #print(MaxPowers)
-
     if Visualize == True:
         plt.xlabel("Time / s")
         plt.ylabel("Power / w")
