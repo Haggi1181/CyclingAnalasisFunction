@@ -42,7 +42,7 @@ def ReadData(DataPath):
 
     return Data
 
-def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "Custom", CustomLocations = [5, 10, 30, 60, 300, 600, 1200, 1800, 3600], PlotName = "nan", leg = False):
+def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output = False, Visualize = True, GrowthModel = "Custom", CustomTimes = [5, 10, 30, 60, 300, 600, 1200, 1800, 3600], PlotName = "nan", leg = False):
     """
     Internal function that calculates the CDA of a bike rider for CDAPlot
 
@@ -65,6 +65,9 @@ def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output =
             Lin - Adds ScaleFactor each time
             MaxLin - Same as Lin but automatically stops once the largest number of additions have been performed
             MaxEXP - Same as Exp but automatically stops once the largest number of doubles have been performed
+            Custom - Records for each int in CustomTimes
+    CustomTimes : 1DArray[Int]
+        Array of all the time values for use in the Custom option
     PlotName : String
         Passes the temperature recorded, used if TempCorrection = True
 
@@ -148,7 +151,7 @@ def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output =
         return(TimeScales,MaxPowers)
 
 
-def FolderPowerProfileCalculator(FolderPath, PrintRawData = False, GrowthModel = "MaxExp", ScaleFactor=10, InitialSample = 5):
+def FolderPowerProfileCalculator(FolderPath, PrintRawData = False, GrowthModel = "MaxExp", CustomTimes = [5, 10, 30, 60, 300, 600, 1200, 1800, 3600], ScaleFactor=10, InitialSample = 5):
     """
     Internal function that calculates the CDA of a bike rider for CDAPlot
 
@@ -165,6 +168,9 @@ def FolderPowerProfileCalculator(FolderPath, PrintRawData = False, GrowthModel =
             Lin - Adds each time
             Max - Increases by 1 each time (warning runs slow, for longer rides large scale processing using this becomes impractical)
             MaxEXP - Same as Exp but automatically stops once the largest number of doubles have been performed
+            Custom - Records for each int in CustomTimes
+    CustomTimes : 1DArray[Int]
+        Array of all the time values for use in the Custom option
     ScaleFactor : Int
         Number of iterations to perform the growth model for Exp and Lin
     InitialSample : Int
@@ -183,7 +189,7 @@ def FolderPowerProfileCalculator(FolderPath, PrintRawData = False, GrowthModel =
     
     while i< len(arrFilePaths):
         
-        time, power = PowerProfileCalculator(arrFilePaths[i], ScaleFactor = ScaleFactor, InitialSample = InitialSample, output = True, Visualize = True, GrowthModel = GrowthModel, PlotName = arrFileName[i], leg = True)
+        time, power = PowerProfileCalculator(arrFilePaths[i], ScaleFactor = ScaleFactor, InitialSample = InitialSample, output = True, Visualize = True, GrowthModel = GrowthModel, CustomTimes = CustomTimes, PlotName = arrFileName[i], leg = True)
         if PrintRawData == True:
             print(arrFileName[i])
             j = 0
