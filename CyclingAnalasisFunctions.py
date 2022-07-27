@@ -1,3 +1,4 @@
+from turtle import distance
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
@@ -127,14 +128,14 @@ def PowerProfileCalculator(DataPath, ScaleFactor=10, InitialSample = 5, output =
         ScaleFactor = len(PowerResults)
     #print(MaxPowers)
     if GrowthModel == "Custom":
-        while i < len(CustomLocations):
-            temp = RawData["watts"].rolling(CustomLocations[i]).mean()
+        while i < len(CustomTimes):
+            temp = RawData["watts"].rolling(CustomTimes[i]).mean()
             temp = [x for x in temp if np.isnan(x) == False]
             PowerResults.append(temp)
-            TimeScales.append(CustomLocations[i])
+            TimeScales.append(CustomTimes[i])
             i = i + 1
         i=0
-        ScaleFactor = len(CustomLocations)
+        ScaleFactor = len(CustomTimes)
     while i < ScaleFactor:
         #print(i)
         #print(max(PowerResults[i]))
@@ -314,6 +315,63 @@ def RiderPowerEstimator(DataPath, RiderMass, BikeMass, CDA, MechanicalDrag, Time
         Time.append(RawData["time"][i])
         i = i + TimeScale
     plt.plot(Time, PowerOut)
+
+def TimeCalculator(Distance, StartAltitude, EndAltitude, EnergyInput, RiderMass = 75, BikeMass = 7, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, Temp = 0.0, TempFix = False, EnergyPrint = False):
+    """
+    Dosnt work maths is way off out by a order of magnitude
+    Parameters
+    ----------
+    Distance : Float
+        Distance of the climb in meters
+    StartAltitude : Float
+        Altitude at start of climb in meters
+    EndAltitude : Float
+        Altitude at end of climb in meters
+    TimeTaken : Int
+        Time taken to climb in seconds
+    RiderMass : Float
+        Rider mass in kg
+    BikeMass : Float
+        Bike mass in kg
+    MechanicalDrag : Float
+        Mechanical drag in watts
+    CDA : Float
+        CDA of rider bike system
+    Drafting : Bool
+        If true drops CDA to 0.6 of CDA
+    DraftingEffect: Float
+        % decrees on the drag
+    Temp : Float
+        Temperature of day in degrees celsius
+    TempFix : Bool
+        Toggles using the temp above to calculate air dencity corrected for temp
+    ----------
+    """
+    AltitudeChange = EndAltitude - StartAltitude
+    m = RiderMass + BikeMass
+    GPE = m*9.8*AltitudeChange
+
+    Altitude = StartAltitude + AltitudeChange/2
+
+    if TempFix == False:
+        if Drafting == False:
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+            TimeTaken = ((0.5*CDA*Pressure*(Distance**3))/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+        else:
+            Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
+            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+    else:
+        if Drafting == False:
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+            TimeTaken = ((0.5*CDA*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+        else:
+            tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
+            Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
+            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+    print(TimeTaken)
+
+        
 
 
 def PerformanceCalculator(Distance, StartAltitude, EndAltitude, TimeTaken, RiderMass = 75, BikeMass = 7, MechanicalDrag = 50, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, Temp = 0.0, TempFix = False, EnergyPrint = False):
