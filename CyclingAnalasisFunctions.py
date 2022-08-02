@@ -1,5 +1,6 @@
 from turtle import distance
 import scipy as sp
+from scipy.optimize import fsolve
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -316,9 +317,9 @@ def RiderPowerEstimator(DataPath, RiderMass, BikeMass, CDA, MechanicalDrag, Time
         i = i + TimeScale
     plt.plot(Time, PowerOut)
 
-def TimeCalculator(Distance, StartAltitude, EndAltitude, EnergyInput, RiderMass = 75, BikeMass = 7, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, Temp = 0.0, TempFix = False, EnergyPrint = False):
+def TimeCalculator(Distance, StartAltitude, EndAltitude, EnergyInput, RiderMass = 75, BikeMass = 7, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, MechanicalDrag=40, Temp = 0.0, TempFix = False, EnergyPrint = False):
     """
-    Dosnt work maths is way off out by a order of magnitude
+    The Equation Solver needs work
     Parameters
     ----------
     Distance : Float
@@ -355,23 +356,41 @@ def TimeCalculator(Distance, StartAltitude, EndAltitude, EnergyInput, RiderMass 
 
     if TempFix == False:
         if Drafting == False:
+            Alpha = GPE
             Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
-            TimeTaken = ((0.5*CDA*Pressure*(Distance**3))/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+            Beta = (CDA*Pressure*Distance**3)/2
+            Gamma = MechanicalDrag
+            Rho = EnergyInput
+            Time = np.linspace(0,5000, 5)
+            temp = EnergyEquation(Time, Alpha, Beta, Gamma, Rho)
+            plt.plot(Time,temp)
+            data = (Alpha, Beta, Gamma, Rho)
+            print(fsolve(MidFunc, 2155, args=data), EnergyEquation(fsolve(MidFunc, 2000, args=data), Alpha, Beta, Gamma, Rho))
         else:
             Pressure = fluids.ATMOSPHERE_1976(Altitude).rho
-            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/2)
     else:
         if Drafting == False:
             tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
             Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
-            TimeTaken = ((0.5*CDA*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
+            TimeTaken = ((0.5*CDA*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/2)
         else:
             tempfix = (Temp+273.15) - fluids.ATMOSPHERE_1976(Altitude).T
             Pressure = fluids.ATMOSPHERE_1976(Altitude, tempfix).rho
-            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/3)
-    print(TimeTaken)
+            TimeTaken = ((0.5*CDA*DraftingEffect*Pressure*Distance**3)/(EnergyInput - (m*9.8*AltitudeChange)))**(1/2)
 
-        
+def MidFunc(x, *data):
+    """
+    Internal Function used in equation solving
+    """
+    Alpha, Beta, Gamma, Rho = data
+    return(EnergyEquation(x, Alpha, Beta, Gamma, Rho))
+
+def EnergyEquation(Time, Alpha, Beta, Gamma, Rho):
+    """
+    Internal Function used in equation solving
+    """
+    return((Alpha-Rho)*Time**2 + Gamma*Time**3 + Beta)
 
 
 def PerformanceCalculator(Distance, StartAltitude, EndAltitude, TimeTaken, RiderMass = 75, BikeMass = 7, MechanicalDrag = 50, CDA = 0.2, Drafting = False, DraftingEffect = 0.6, Temp = 0.0, TempFix = False, EnergyPrint = False):
